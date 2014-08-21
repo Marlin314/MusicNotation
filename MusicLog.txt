@@ -268,4 +268,5 @@ This is not a major failing - I mean of course I can fix it - but I do need to k
 
 However, having been burned once by just hacking in code without thinking about it my primary decision is that I should not write code for a day or two and stop and think about the layout architecture. 
 
-
+1:51 PM 8/21/2014
+Today I pushed all this code and stuff up to GitHub. So now I can share it like a modern cool guy.
