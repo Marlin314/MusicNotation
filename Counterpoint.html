@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html><head><title>Counterpoint</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<script>function inject(loc, val){document.getElementById(loc).innerHTML = val;}
+/* this is just a quick hack to demonstrate how you can do counterpoint with a genetic algorithm */
+var noteNames = 'C C# D Eb E F F# G G# A Ab B'.split(' ');
+var parms = [];
+
+function Parm(name, fShow, dVal, hint){
+  this.name = name; this.fShow = fShow; this.box=false; this.value = dVal; this.hint = hint;
+  this.title = '<span onClick="parms['+parms.length+'].ck();">'+name+':</span> <span id="l'+name+'">'+fShow(dVal)+'</span> <br/>';  
+  parms.push(this);
+}
+Parm.prototype.display = function(){inject('l'+this.name, (this.box)? this.asBox() : this.fShow(this.value));}
+Parm.prototype.asBox = function(){return '<input id="b'+this.name+'" type="text" value="'+this.value+'"/>'+this.hint;}
+Parm.prototype.ck = function(){
+  this.box = !this.box; 
+  if(!this.box){
+    var vloc = document.getElementById('b'+this.name);
+    this.value = vloc.value;  
+  }
+  this.display();
+}
+
+
+
+
+function showTextVal(t){return t;} // generic display function for parameter values
+
+function showCF(data){
+  var n = data.split(' '); var res = ' '; var sep = '';
+  for(var i = 0; i<n.length; i++){res += sep + noteNames[n[i]%12]; sep = ' ';}
+  return res;
+}
+
+
+function showParms(){
+  var res = '';
+  for(var i = 0; i<parms.length; i++){res += parms[i].title;}
+  inject('stuff', res);
+}
+
+function rnd(k){return Math.floor(Math.random()*k)}
+
+var pop = [];
+var oldDNA = new DNA();
+
+function getCfLength(){return parms[0].value.split(' ').length;}
+var CfLength;
+
+function DNA(){this.vals = [];}
+DNA.prototype.rnd = function(){for(var i = 0; i<n; i++){this.vals.push(rnd(40)+50);}
+DNA.prototype.asText = function(){return this.vals.join(' ');}
+DNA.prototype.breed = function(ind){
+  oldDNA.vals = []; // nuke the old value in the buffer so we can fill with a new value
+  var cur = this;
+  for(var i = 0; i<this.vals.length; i++){
+    if(rnd(100) < parm[1].value){cur = (cur == this)? ind : this;} // crossover is 1
+    oldDNA.push((rnd(100) < parm[2].value)? rnd(40) + 50 : cur.vals[i]); // makeover is 2
+  }
+}
+
+function startMeUp(){
+  alert("dude"); 
+  new Parm('Cantus Firmus', showCF, '60 62 64 60 60 62 64 60 64 65 67 64 65 67','60 is mid C');
+  new Parm('Crossover', showTextVal, 30, ' enter a percent');
+  new Parm('Mutation', showTextVal, 2, ' enter a percent');
+  showParms();  
+}
+</script>
+</head><body onload="startMeUp()">
+
+
+
+
+
+<div id="stuff">dude</div>
+
+</body></html>

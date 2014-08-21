@@ -1,0 +1,16 @@
+// defined items in music.js and musicTest.js - test routines marked with **
+Time - val, prev, next, x 
+
+TG - root
+  get(start) - returns time that matches this start time
+  **spew() - returns string like "TG: 0, 4" showing the list of times in order.
+  **addSpew(t) - adds element t and returns a string showing before and after results. 
+  
+var QUARTER_NOTE_DUR 
+
+SvgStr - str // holds an svg element. use several of these for layers
+  line(x1,y1, x2,y2) - line
+  fE(cx,cy,rx,ry) - filled Ellipse
+  hE(cx,cy,rx,ry) - hollow Ellipse
+  beam(gap, x1,y1, x2,y2) - gap is thickness
+  

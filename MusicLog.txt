@@ -1,0 +1,271 @@
+.LOG
+
+I have decided to create a javascript/HTML5 based music notation system that can run in a browser. It is a viewer, not an editor. It is my intent to design and document an easy to type ASCII format that represents the music. I will NOT be using Music XML because I expect people to be able to understand and type in music. For example I expect in my language to represent a quarter node of middle C followed by a half note D to look like this:
+
+  C*Do
+
+In Music XML that would be:
+
+      <note>
+        <pitch>
+          <step>C</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>1</duration>
+        <type>quarter</type>
+      </note>
+      <note>
+        <pitch>
+          <step>D</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>2</duration>
+        <type>whole</type>
+      </note>
+
+I have created this LOG file so that I can basically keep track of when I did what. (In case you didn't know this, way back in the stone ages of windows 1.0, Notepad was built with the feature that if the first 4 letters of a text file are .LOG, then every time you open that file to edit it, Notepad will append the days date and time so that you can easily create a historical log). Here check it out!
+
+1:12 PM 7/23/2014
+See, I saved the file and came right back.
+
+Anyway. I am going to try to do this development in chunks, in no particular order, verifying that I can render something along the way. I will attemtp to document all design decisions as I think about them here in this log, and I will try to keep all the javascript in a single js file music.js which holds the TRUTH.
+
+All the other various HTML files will essentially be the various ways that I tested parts of the music system.
+
+I have been thinking about this for a while now and have already made several design decisions and done some experiments to convince myself that this is worthwhile. I will not try to go over that all now, mainly because I want to write some code. In fact, what I am really doing right at this moment is testing THIS particular method of development, namely: Open the log in the morning. Tell you what I plan do do. Then open the js file and do it. Write some html to test it, then at the end of the day log what happened.
+
+So - what I plan to do today is to write some time code.
+
+A measure needs to have a TimeGroup - this is a list of all the start times for the notes and rests in the measure. Basically, every note and every rest has a stem and the stem has a Time object that lives in the TimeGroup. That time is used to do the vertical alignment that is required.
+
+3:17 PM 7/23/2014
+
+Wrote the TG code, tested it and decided that I need another couple of files in my documentation. 
+
+Good testing requires that you write more code to walk over your data structure and show you what is in them - so I created musicTest.js that will contain the extra testing code that I need as I go along.
+
+I also decided that it would be good to have have an index of what is in both music.js and musicTest.js so that I don't have to read through the code to remember what I have already written. So musicInterface.txt will document the interfaces to both my js files.
+
+
+4:34 PM 7/23/2014
+
+Installing Fonts was a pain in the old days. We will assume that svg is fast enough that we can just use polygons for all the music characters. Furthermore we will assume that someone else will generate beautiful characters (like the slightly skewed ellipses for note heads). In short, we use quick and dirty ellipses for note heads.
+
+In other words, I will spend no time in making the graphics beautiful - I will only make it adequate so that I spend my time working on makeing the code more useful rather than more beautiful.
+
+Discovered that if you don't supply a fill color to svg, it fills it anyway! WRONG! What a bag! Needed to look up alpha chanel transparancy in order to get an open half note head.
+
+Wrote a class SvgStr, with methods - line, fE, hE to draw lines, filled Ellipses, and hollow Ellipses. By building a string class, I can deal with layers. i.e. I can have variables like Background, midGround, ForeGround and then write into those strings in any order. When I finally render I can write those strings in the proper order and will thus draw back to front.
+
+5:34 PM 7/23/2014
+
+Added a single routine, beam, to the SvgStr class. So with Ellipses, lines and beams I can draw something that looks like notes. That should be enough for one day.
+
+
+10:53 AM 7/29/2014
+
+I think it is about time to talk about the pile of classes that I expect to have. This is only a partial list, which will need refinement and additions but it reflects some of my thinking mostly along two very different lines. One line of thought is mostly top down concerned with how you think about a piece of music that would get delivered to you from the Web and the other is much more bottom up, how you draw note heads and rests and beamed groups. 
+
+Musical data ultimately comes from some web database. It will contain information to allow searching for the chunk of music that you are interested in and will eventually give you a bunch of Alts, which are just little strings written in little languages each of which represents effectively one measure worth of information of a particular type. There will be a little language for each different type of data. Typical data types would be, Rhythm, Notes, Lyrics, Fingerings, Tab, BowMarks - the first two being fairly generic and the others being instrument specific. Also it is expected that there will not be much variance in the first  two (Rhythm and Notes), those will be the notes written by Bach, or Mozart, but the others will exist in multiple copies. You could easily have Bernstein's Bow Marks, and Bob's Bow Marks, and Sally's GuitarTab, and Ruth's Fingerings. We capture that variation with Alts. So here is the basic organizational hierarchy:
+  
+Composer - Work - Movement - Section - Measure - Part - Track - Alt
+  
+Movement - defines the Parts and instrumentation - think Act2Scene3 of Don Giovani which is a Duet.
+
+Section - captures repetition. It is just a block of consecutive measures. the layout of those sections, either AABBAA or AABB-DelCapo or |:A:|:B:|-DelCapo would be kept in the Movement 
+
+Slice - One measure, with all the parts of a piece. It is the smallest vertical slice of a Section. The kids of a Slice are all horizontal elements, Parts, Tracks, Alts. 
+
+Part - what is performed by one instrument, but will inself be composed of multiple horizontal tracks.
+
+Track - for example Paino would have RH_Rhythm, RH_Pitch, LH_Rhythm, Fingerings etc. - Vn2 might be Rhythm, Pitch, BowMarks
+
+Alt - this is not a musical term. I introduce it to contain variants of Fingerings, BowMarks, GuitarTab etc. There will be only one Track, Fingerings, but each different editor can have his/her own Alternatives. Alts will necessarily need something on the Web end so that you can get the ones that you are interested in but at the low level, the Alt is just the actual string in the little language that we need.
+    
+I may possibly need some alternatives at the Part level (like if you want to play the first violin on an oboe, you want oboe fingerings, not violin ones) but I won't worry about that now.
+ 
+There is a regularity in the above structure and I have named members to reflect that regularity. The three fields are
+  da (for dad, ie the parent, so a movement has a work as a da, a section has a movement as a da ...)
+  kids (a movement has many sections, a Section many measures, those are the kids...)
+  ndx (index of birth order i.e. for any element this.da.kids[ndx] == this )
+ 
+Yes, I could have given each class individual names. A movement has sections, a section belongs to a single movement ... perhaps I will regret this choice someday. It does mean that you could have something ugly like Alt foo; foo.da.da.da to back up to the Slice rather than foo.track.part.slice. But seriously, I don't think the code will be nested that deep.
+  
+The classes that I have just listed are essentially high level, describing the music. It is what we get from the Web. It is the Model. At the lower level most of the classes are View classes. I could slavlishly append the word "View" on my viewer classes, but mostly there is no need. All the little things like, Stems, Rests, Heads, Dots, Beams, Flags, Accids, KeySigs, TimeSigs, Clefs, Staffs, really exist for the sole purpose of displaying the music. They are full of coordinate data and  know how to draw themselves on the screen. 
+
+
+9:38 PM 8/7/2014
+It's been a while since I've been able to work on this. Next door neighbor died had to attend funeral. Was sick and depressed. Folks at my real job needed attention. Same old excuses. Now back to it. We will forget about the top level classes that we just talked about and start right in on something fun. The little language for representing music.
+
+This language has one single simple notion: Every single letter is an opCode for a single machine instruction of a virtual machine that we will build. So a string is just a list of opcodes, i.e. a program for the VM. The VM, unlike a typical computer processor, can have a whole bunch of complex specific purpose registers since the only purpose of this VM is to parse those strings and produce some musical structure that we are interested in.
+
+So next I intend to write the VM class and the parser associated with it. Since the VM will (after parsing a string) produce a music structure this means that I will need to create some of those low level view classes just to test it. Thus in this next pass at the code I will probably also need to write Stem, Head, BeamGroup, BeamShape, and some kind of Staff so that I can see that it is doing what I expect.
+
+I will be doing this in chunks adding one opcode at a time to the big switch table and adding whatever variables I need into the VM. I will try to leave them in the switch in the order that I write and test them.
+
+
+12:35 PM 8/8/2014
+Wrote the first part of the parser. Built a helper class Reg that represents a Register in the VM. The main idea was to consolidate some of the error detection that I believe that I must do at some point. When you generate numbers or y values or other values in the VM, you generally do it for a reason - so that some other operation could consume that value. If you create a value and then overwrite it without consuming it - that would be a place to issue a warning that something might be wrong. Of course not everything in the VM needs to be monitored in this way, but I figured that it wouldn't hurt to build the helper class and see how it works. 
+
+Some of the variables that I need are essentially counters, like the number of Dots or Tics that have occured. These values just reset to zero after you fetch them, and there is no error in fetching them again. I could have built a different helper class for that behavior but decided instead to just add a different "consume" function that doesn't throw warnings. get() will throw warnings, getCount() does not.
+
+With that Reg class in place, I created Reg num, and Reg num2 in the VM and wrote the code that processes digits so that a string of digits like '123' accumulates to a number like 123. Being reverse polish we must enter '13-' to create the negative integer -13. I decided that the symbol '-' will be dual purpose. If you use it immediately following a number it is of course a negation operator. Any other use, it just counts, as do plus signs. The intent is to use these characters '+-' as the operator for preforming an octave shift, 8va or 8vb on the staff.
+
+I intend to now put in the code to deal with y values.
+
+
+9:30 PM 8/8/2014
+So I have added a few more parts to the parser. I now mostly handle these characters
+
+0123456789abcdefgABCDEFG-+/.'~()*oO^v
+
+However I say mostly because my handling of the letters and of the () do not yet actually create stems and heads and beams as they eventually must. I will need to create the view classes but while I am thinking about it there is something that I want to do with the VM that will give me some freedom in the way that the little language will look.
+
+Basically if I want to play the first three notes of a C scale as quarter notes it would look like this:
+
+C*D*E*
+
+You create a Y-value with the C command, then * creates a stem to hold that note, and so on. However I don't quite want it to be that restrictive. I do not want to require that you intersperse the heads with the pitches. I want you to be able to write
+
+*** C,D,E
+
+or
+
+C,D,E ***
+
+as alternatives. Part of the reason is that since white space won't matter, you should be able to arrange the single string vertically if you want like this:
+
+C, D, E
+*  *  *
+
+The commas (which are not required in interspersed mode) are necessary to advance to the next stem because it is common to stack multiple notes on a single stem. For example, the same thing in parallel thirds would be
+
+CE*DF*EG*
+
+or
+
+CE,DF,EG
+*  *  *
+
+In order to allow these alternate orders my VM becomes slightly more complicated. I will be keeping a list of stems (which is where all stacks of heads live and what all beamed groups refer to) but I will keep two pointers to that list. Basically one pointer keeps track of where we are in terms of adding heads, and the other keeps track of where we are in terms of adding flags. Essentially hp, the head pointer, tells which stem should get heads as they are created, and fp keeps track of which stem is being associated with the current rhythmic element. * (and its varients, o and O) will basically bump up fp and , will bump up hp.
+
+I just wanted to say something here before I haul off and make the mess over in the code.
+
+Outline of what I need in my view classes.
+
+Staff - y,gap // eventually it will need more but for now this will work
+BeamGroup - BeamShape, stems 
+BeamShape - beams
+Beam - lev, s1, s2
+Stem - heads, beamGroup, time, up, nDot, isRest
+Head - staff, stem, tone, shape, tie, wrongSide, accid
+Tie  - h1, h2
+
+
+10:59 AM 8/11/2014
+Well that took longer than I thought it would, but I like the little VM viewer that I built. Gives me more confidence that I am parsing correctly because I can type in a string. Parse it. Look at the state of the machine. Extend the string by one character, parse it again. It is basically a debugger for the VM and let's me verify that code for the VM works as expected.
+
+So the next thing to write is some of the actual view code for my classes so that beam groups draw beams, and heads draw as ellipses etc. That is afterall the real test of whether or not my VM is assembling objects correctly.
+
+The main thing that building the VM viewer has caused me to contemplate is how robust I want to make my view code. For example, while I am in the middle of building a string of rhythm and pitches the parenthesis may be unbalanced (because I haven't completed the string yet) so I have a partially built beam group. My VM viewer shows me that partially built beam group and I can see the markers that I put in the beams to indicate that the beam isn't finished yet.
+
+Now I could write my view code so that it assumes that all the structures are finished and that I have proper music elements constructed. i.e. the viewers only display complete measures. OR I could make the viewers slightly more complicated and allow it to draw out a partially complete beam group.
+
+Yes, the ultimate intent is that people will write actual gramatical sentences and that is the only thing that we should have to display as proper music but possibly I can help the user debug their grammar mistakes by displaying something that is half built based on what they have entered. I guess I'll just see how ugly the code gets if I try to make it view incomplete structures.
+
+I guess I should also comment at this time that after badmouthing overrides previously, I am thinking of using them extensively during development. The reason is just this: while I expect to eventually build a layout engine that will try to do a beautiful job of placing elements on the page so that they don't overlap and so that the spacing is nice - I will probably want to have an override on everything that the layout engine does so that one does have the option of independently placing everything. So if I am going to build language elements that let me place everything I see no reason at the moment that I shouldn't build it in such a way that the layout engine is effectively writing in the overrides for you. Just a thought.
+
+
+9:32 AM 8/13/2014
+I have now got note heads and stems and staffs appearing on the screen, and a whole lot of things to do. The top of the toDo list ist to get Beams showing up so that I can verify the logic that I wrote the other day to open and close Beams. I believe that the code works and is building the structures correctly but writing the viewer will be the easiest way to test.
+
+Among the other rather painfully obvious missing components are the code to render: Rests, Seconds, LedgerLines, Accidentals
+
+Accidentals depend on keySigs and since I haven't written those yet accidentals with just have to wait. Furthermore I have done something that I didn't want to do at the onset but I was too lazy to think of a way around it. The thing I didn't want to do was write bad code into music.js - I wanted to write all bad code (by that I mean code for testing that I intend to throw away) in MusicTest.js. It was my hope that by doing that all the old test code that I wrote as this thing lurched to life would still run even after it was finished.
+
+The problem cropped up when I went to write note heads on the screen. Well they need a y values. So I just wrote the y value into the head. But I don't really want heads to hold onto a y Value. Rather I want them to compute a y Value based on their scale degree as interpreted by KeySig. Well, since I haven't implemented KeySig yet, I just built heads with yValues. This means of course when I finally do implement key signatures I will have to come back and fix the code that builds heads and as a result, it means that test code that I write today, testing heads with y Values embedded in them won't work in the future when they don't have y values embedded in them.
+
+Oh well
+
+What I can do is to continue to upgrade my little VM & Music viewer so that it is in synch with the music.js file. That way you will be able to run the test in the future. What you won't be able to do is use it to get a historical view as to what the system looked like back in a previous time.
+
+Basically, I had been trying to essentially keep the music.js file in historical order so that you could look at it and see when I had written the next piece of code by just looking at the line number. I am up to about 350 lines at the moment. But now I have put code in the Head function that I know at some point in the future, I will come back and edit and remove it. So much for trying to write this code with absolutely no revisions.
+
+
+
+11:33 AM 8/13/2014
+Thinking about how to render beams in abnormal situations when some stems are up and some are down, possibly even from different staffs, I decided that beam stacks should have a direction exactly the way that stems have a direction. So an up stem on a head goes up the page to a beam. An up beam acts as if all the stems connecting to it are up stems and thus the master beam is at the top and any secondary beams are drawn below it. 
+
+So imagine if you will a beam group like (*(**)) where you have a single secondary beam. If this is an up beam group, that secondary will be drawn lower than the master beam. Now imagin if you will that all the stems connected to this group are actually down stems. Well the first one needs to go down to the master beam. The other two, must cross through the master beam and get all the way down to the secondary beam.
+
+This leads to the logic that if the stem dir matches the beam dir, then you draw the stem to the master beam. Otherwise, you use the masterbeam y value offset (based on the beam dir) to the secondary.
+
+Yes, the pattern described is not one that you would want to draw (it is not musically correct) but it is graphically correct in that the stems cross the beam structure.
+
+And now that I have decided to have a beam dir (this is just the direction in which you stack the secondary beams in relation to the master beam) there is no reason not to allow an override of that in the same way that you can override a stem direction. Thus
+
+!(i*(i*i*))
+
+would be the structure that I just mentioned. I first override the beam dir to be up, then I override each stem to be down.
+
+What this realization helps me do is to have a concrete way to draw beams and stems - namely define a direction for each stem and one for the beams and calculate coordinates. Which splits the drawing code from the layout code, whose job is to determine those directions if none were given. So for example on typically wants to avoid cross direction beaming. So by default if you see (*(**)) there are really only two ways that you would like to do that, either !(!*(!*!*)) or i(i*(i*i*)).
+
+When I split into multi-voicing I can make the default layout behavior convert {(**)}(**) to {!(!*!*)}i(i*i*)
+i.e. you do down stems (and beams) on the soprano voice and up stems (and beams) on the alto.
+
+ 
+10:40 AM 8/18/2014
+In my last bit of code I got the beams drawing out to the screen so that I can now look at my structures. That is very satisfying. It now looks like music. Well - almost. The parts that look like music look like music, all the bugs in the code make it look like garbage. So that is todays task, to track down and fix all the little oversights that I made in the last bunch of hacking. I have stems leaving from the middle of notes. My beam group overrides don't work. No point in listing all my mistakes here since I don't know what all of them are yet and I should have them all fixed by the time anyone reads this.
+
+
+11:34 AM 8/19/2014
+So we did fix some bugs. Things are looking better now. I have added code to do ledger lines and added the code to adjust notes on a single stem that are a second apart. Basically the rule for seconds is that the final head on the end of a stem, the one furthest from the flag/beam is alway put on the proper side of the stem (proper means that it depends on whether the stem is up or down). Then scanning the notes toward the flag, if you find one that is one line space away from the previous note AND if the previous note was on the proper side, then this note switches to the wrong side of the stem.
+
+I have not fixed the code so that notes that are on two different stems that are a second apart are also adjusted to not overlap thus at the moment
+
+ DC*
+
+properly displays the C and the D a second apart but
+
+ {D*}C*
+
+does not.
+
+So here are some of the things that I have not yet implemented that I clearly must
+
+1) accidental - these only make sense in the presence of key signatures and I haven't done them yet
+2) key signatures
+3) Clefs
+4) Octave shifts
+5) Dots
+6) Triplets
+7) Beam Lifting - if an inner note is too close to the beam the beam should move.
+8) Alberti beam exception - Alberti base looks like (C*G*C*G*) where you rock back and forth between two notes
+   - tradition requires that you special case these with horizontal beams, NOT beams sloping from C to G
+9) cross voice seconds, cross voice unisons.
+10) internal beamed rests - (A*(~*c*)) does not currently draw beams correctly because of the rest.
+
+So there are major chunks missing. None the less, there is a lot of music elements that are working and look fine.
+
+Something that I have similarly been avoiding and probably can not anymore, is horizontal layout. In all my testing I have just been placing all notes (i.e. all different time elements) uniformly across the page. This looks fine As long as the notes are all in a single stack. As soon as you introduce seconds a time stack can now be two notes wide instead of only one. This problem will get even worse when I introduce accidentals and dots both of which affect the width of a head stack. What I am thinking of is this.
+
+In the first draft, time.x is the x value for that time, and I set it to some absolute value (uniformly spaced values in lieu of writing layout code). I am now thinking that times should hold onto widths as well, and as you throw accidentals and dots and seconds onto a head stack, the width of that head stack accumulates in the time element. Then when you want an absolute x out of a time element it actually computes that x as a width offset from the previous time element. Thus the coordinates in the time element are NOT absolute coordinates, rather they are relative to the previous time. 
+
+Just for grins, I started entering some semi-random measures from Beethoven Piano sonatas. They were semi random in the sense that I would skip measures that had accidentals and dots that I haven't yet implemented. It was from some of that random testing that I remembered the Alberti beam exception and the necessity of beam lifting and even the cross beam seconds. Of course I knew I hadn't implemented any of those features, but it was looking at real music that CAN'T currently be represented in my music language that reminds me of the features that I need to include.
+
+Looking at the music that way did make me think of something that I had not considered before. I introduced L and R as commands that switch between the left and the right hand in a grand staff - as if switching back and forth is something that you need to do. It occurs to me now that I could REQUIRE you to enter all the righthand notes first (in much the same way that I require you to sort the notes from high to low on a single stem) before you enter the Left hand. If I forbid you to switch back and forth, I no longer need to use up the letter R, because you never switch from Left to right, and furthermore I can probably eliminate the difference between a simple staff and a grand staff. The idea is that if you just enter notes on a staff and NEVER use the letter L to switch to the lower staff, well then there was no lower staff and it was just a simple staff. On the other hand, if there is an L present then it must have been a grand staff all along. Thus I can look at all staffs as grand staffs, many of which just never use and thus never show their lower hand.
+
+Another thing I am thinking of is to split off yet another js file. Not ready to do it just yet, but thinking about it. The idea would be to remove all the layout code to its own file. Thus music.js holds all the musical structure code, the Staffs, the Heads, the Stems, the Beams and all their rendering components, but layout.js holds all the code that decides how to arrange the accidentals, how to space out the items, how high to raise the beams etc. The THEORY behind this split is that I can believe that there could be disagreements on how to stack the accidentals, or how to do the beam layout. On could try out different layout programs by this means.
+
+7:03 AM 8/20/2014
+Hit a roadblock yesterday. I hacked in some layout code, broke everything, and as I was fixing it realized that I had hacked in the wrong thing. I had not thought about it correctly so now I must back out the mistakes that I made and do it right - or possibly just throw it out and do it right.
+
+My mistake was that I was not dealing with an essential layout problems. For example one incorrect assumption was that Heads (unless they are on the wrong side of a stem) get their x from a time coordinate. This is the normal behavior but there are exceptions - a head in the soprano line that is only a second away from a head in the alto line. Both heads are on the correct sides of their respective stems but must be displaced from one another to avoid collision and thus can NOT be both located at the time coordinate.
+
+Furthermore, my layout code was going through my elements in BeamGroup order i.e. the order in which things were entered and as a result was looking one stem at a time through the soprano line and then backing up and looking at the alto line. (This is the serialization order in which the little language works - but it is not the proper order for resolving layout problems - I can't properly position the soprano line without considering the alto.
+
+This is not a major failing - I mean of course I can fix it - but I do need to keep my data in a less simplistic manner. I am thinking that I should move to a notion where x coordinates are not kept as actual single values (which tends to make them fixed) but rather make them offsets from some other x coordinate. This will allow me to place things relative to other things (basically doing things like "this accidental is dx removed from this noteHead's x").
+
+However, having been burned once by just hacking in code without thinking about it my primary decision is that I should not write code for a day or two and stop and think about the layout architecture. 
+
+

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html><head><title>Test TG</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<script type="text/javascript" src="music.js"></script>
+<script type="text/javascript" src="musicTest.js"></script>
+<script>function inject(loc, val){document.getElementById(loc).innerHTML = val;}
+
+function startMeUp(){
+  alert("Testing Time Groups");
+  inject('stuff', 'Time Group stays sorted as you add elements');
+
+  var t = new TG();
+  alert(t.addSpew(4));  
+  alert(t.addSpew(2));  
+  alert(t.addSpew(4));  
+  alert(t.addSpew(7));  
+  alert(t.addSpew(0));  
+  alert("you shouldn't add neg nums but it doesn't break if you do");
+  alert(t.addSpew(-1));  
+  alert(t.addSpew(-2));  
+  alert(t.addSpew(-1));    
+}
+</script>
+</head><body onload="startMeUp()">
+
+<div id="stuff">dude</div>
+
+</body></html>

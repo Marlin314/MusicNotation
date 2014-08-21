@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html><head><title>Test VM state</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<script type="text/javascript" src="music.js"></script>
+<script type="text/javascript" src="musicTest.js"></script>
+<script>function inject(loc, val){document.getElementById(loc).innerHTML = val;}
+var vm = new VM();
+
+function startMeUp(){
+  parse();    
+}
+
+function parse(){
+  vm.init(); // clear machine
+  vm.timeGroup = new TG();
+  t0 = vm.timeGroup.get(0); t0.setDB(35);
+  var s1 = new Staff(Staff.Five, 5, 60, 50, 600);
+  var s2 = new Staff(Staff.Five, 5, 140, 50, 600);
+  vm.setStaffs(s1,s2); // only one staff so not grand staff
+  var str = document.getElementById('input').value;
+  
+  TestCNDX = 0; 
+  TestCSTR = str; 
+  parseRN(vm, TestCharIteration);
+  //vm.timeGroup.uniformSpace(0);
+  inject('stuff', vm.spewState());
+  
+  var s = new SvgStr(); vm.staff[0].svg(s); vm.staff[1].svg(s);
+  for(var i=0; i<vm.bgs.length; i++){vm.bgs[i].svg(s);}
+  var foo = '<svg height="200" width="800">'+s.str+'</svg>';
+  //alert(foo);
+  inject('graph', foo);
+}
+
+</script>
+</head><body onload="startMeUp()">
+
+Input String: <input type="text" id="input" size="60"/><button type="button" onclick="parse();">Parse</button>
+<div id="stuff">enter a string in the box. Click the Parse button, resultant VM state displayed here</div>
+<div id="graph"> foo </div>
+
+</body></html>

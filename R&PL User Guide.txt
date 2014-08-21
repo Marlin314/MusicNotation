@@ -1,0 +1,189 @@
+==R&PL (Rhythm and Pitch Language) Users Guide==
+
+++Design Goals++
+
+I felt that the world needed an nice open source human readable/writable serialization language that would allow you to represent standard music notation. R&PL is my attempt at such a language. It was designed to be adequate for my needs, namely to share music that I write with some of my guitar students - so if it seems to be a little biased in terms of guitar Tab notation - mea culpa! However, I did run a music notation business in an earlier era so I have actually tried to create something that really does cover common practice.
+
+In the design of this language I wanted to avoid two things: 1) XML - for the simple reason that it is NOT a human friendly language. XML is a language designed for computers that can be somewhat decoded and read by humans. It was never designed for humans to write. and 2) the Word/DOC proplem - the problem being that DOC files do in fact hold word documents but can neither be read nor written by anything other that a computer program, namely Word. 
+
+So I emphasize that I wanted a language that could be written and read by a human being using nothing more complicated than notepad that will both represent music notation AND be sufficiently easy to parse that any computer geek could build code to read and emit this notation without too much effort. In a sense I am attempting to do something like HTML, i.e. define a language that can hold documents and allow others to implement code that can read or write those documents. 
+
+--Metalanguage--
+
+The next comments are intended primarily for those coders that attemt to build parsers for this language HOWEVER the general user should not skip this section just because it refers to computer language terminology that you don't care about. You can ignore that, but the basic principles will be useful to you in understanding how the language works.
+
+In order to make the language easy to parse and implement I have followed 2 main principles - 1) make every single character do one single unique thing and 2) use Reverse Polish by default.
+
+The first principle means that I can think about this language as if I have a VirtualMachine that treats an R&PL string like a program where each single letter in the string is an opcode for the machine. Thus the machine is Easy to implement. You basically have one switch statement that looks at each character in turn and does that one thing.
+
+The second principle means that occasionally I will reorder notational elements from the way that they show up in Common Practice Notation. For example: in CPN any accidentals preceed the note head and any augmentation dots follow the note head. In R&PL both accidental and dots, which are modifiers for a head come before the head. I will do something like
+
+  ^.*
+  
+to mean a sharped and dotted head, rather than
+
+  ^*.
+  
+which would be more like common practice. My layout more closely resembles English where you say "Sharped Dotted Head" than CPN.
+
+The really important take away from this section for the casual user is that 1) every character does something (even it it looks like they group together) and 2) Typically if some character, like * which is a note head, needs some values, like whether or not it is dotted, that value that * needed happens before the * in the language.
+
+++The Language++
+
+--Heads *oO--
+
+There are basically 3 kinds of noteheads in common practice, quarter, half and whole. They are represented by the three characters
+
+  *oO
+  
+--Pitches--
+
+Every head need one (or more) pitches and we will use letter names to refer to them so here are four stems with pitches.
+
+  C*EC*coB*
+
+The first stem was a quater note with the single head on Middle C. The second stem was two quarter notes, basically the E above middle C and middle C. The third stem was a half note on the c an octave above middle C, it is thus on the space just above the middle line of the staff (We are working in treble clef, you know. Didn't I say that?). And the final stem is a quarter note which is the B right on the middle staff line.
+
+NOTE: when I wrote the two notes on the stem I followed the convention that notes are entered from highest pitch to lowest. I can't promise that bad things will happen if you don't sort the notes on a single stem - I may have the code sort them, but even if the code does sort them YOU should make an effort to make the language you enter follow proper conventions. Yes, the code could ignore your mistakes but if it does that and allows you to do it one way and another person to do it another way then soon the language becomes broken up into dialects.
+
+We have used Big Heavy Uppercase letters to represent Low notes and have used Small Light Lowercase to represent high notes. We choose the mid line of the staff to be the breaking point and arbitrarly selected that pitch (the zero y value) to be the highest upper case character.
+
+By using both upper and lower case characters we can no represent any note on the staff lines using a single character. However sometimes you do have notes on ledger lines that are out of the scope encompased by C to b. We use tic, ', to extend the range, thus 'C is an octave below Middle C, 'c is an octave above c and thus two octaves above middle C), ''c would be 3 octaves above middle C, 'B will be the b just below Middle C, and so on.
+
+This let's us create pitches however that is not the whole story, or rather it give you a false impression. I gave you the impression that we were describing pitches and using pitch names for a treble clef - WRONG! What we actually did was this - those letters and tic marks are used to define Y values. They define vertical locations on a single Staff. B is the center line of the staff - ALWAYS! It doesn't matter whether or not it was treble clef or bass clef or C clef or any other clef. The letters are just Y Values. They are NOT note heads! It was the * that was the note head. The note head operator needed a Y value (or a collection of Y values) that it could consume to create notes. It was the * that made those things that looked like pitches into notes. Until then, those ptiches were just y values sitting around waiting for someone to consume them. We will see later that there will be other operators that want to consume Y Values as well (like for instance when you want to override the default height of a beam - you need to supply that beam with an alternate Y Value - you will enter that Y Value just like you did with notes, tics and letters).
+
+--Beams and Flags--
+
+You have seen stems with no flags, namely the quarter note, the half note and the whole note. Flags and Beams and Beaming patterns are all indicated using only two characters, ().
+
+In order to place flags on a single stem, just wrap that single stem with the right number of parens. So one set of parens makes an eight note, two sets makes a sixteenth note and so on.
+
+  (*)   ((*))
+  
+Multiple heads within parens makes for beaming patterns
+
+  (**)   (.*(*))   ((**)(**))
+  
+The first of the above is just two eighth notes beamed together. The second is a dotted eighth beamed to a sixteenth. The third is 4 sixteenth notes with a single master beam running across all 4 stems and then secondary beams joining the first two and joining the second two. 
+
+NOTE: I have included spaces in the above examples. Our language lets you do that. I wouldn't say that space NEVER matters but
+mostly white space is insignificant. I will in fact give you one quick example where space matters. When you enter the number 12 you do it just like that with the two character string. When you want to enter negative 12 you actually enter 12- i.e. - is an operator that negates the number that was just entered. HOWEVER I don't want a string like "12   -" to represent minus 12. If you are going to negate a number you must do so immediately with no intervening space. This allows me to use the - symbol to do something different, represent octave shifts of clef, when it is used away from a number. So I can NOT say that space never matters but for the most part space never matters. The Language intendes that you should be able to insert white space to make intent clear.
+
+  (C*D*)    ( C*   D* )  // these two clusters represent exactly the same thing.
+  
+--Interaction of Beams and Notes--
+
+My guess is that at this point I have taught you enough to enter 80% of the music you would ever see. I haven't covered accidentals yet, but you did see me refer to ^ as the way to sharp an note and you might have guessed that v is the way you flat a note and there you go you now really can enter about 80% of all music. We have only left out multi-track voicing which occurs in a lot of baroque piano music, and slurs and ties and hairpins and mordents and ... OK so there is still more to go BUT we have covered Beams and Flags and Dots and Head Shapes and Pitches, eh.
+
+Look at this:
+
+  (EC* D*)
+  
+Can I also write that as
+
+  E(C* D*)
+ 
+Would it even have occured to you to intermix the flags and the pitchs? I mean, if * is an operator that picks up yValues and defines note heads did it pick up both the E and the C in the above example? The answer is NO. The reason is simple - I want to allow the possibility of including overrides - where you force the system to do things in a particular way different from it's default behavior. I DISCOURAGE overrides. One should not need to do that but more importantly it means you are tuning the track to ONE particular look. This violates the notion that the music is general, that the user may change the key, may change the output device that she is using, my not even be playing this track on the same instrument that you or Bach wrote it for. Overrides are BAD but sometimes you just gotta be BAD.
+
+In this particular case the (, which is createing a beam group notices that there is a yValue defined and thus the Beam consumed it as an override for the beam height. 
+
+In CPN the traditional height of the master beam is exactly one octave higher than the highest note on the stem (we are assuming an up stem here). Thus (EC*) has the flag located at e (one ocatave above E). I can FORCE the flag higher with f(EC*).
+
+Similarly I could force the other end of a Beam as well
+
+  f(EC*FD*g)
+  
+That g hanging out just before the ) got consumend by the ). So what does this do?
+
+  f(EC*g)
+  
+Who knows. It's wrong. You should probably be shot for asking about that!
+
+In reality, as I write this, I have not yet built the interpreter so I don't know what the code will do. I am telling you how I intend the laguage to work for humans. The grubby details come out in the code. I am guessing that if I had NOT brought your attention to this use as overrides you NEVER would have even thought of writing a string like E(C*) to mean two notes on a stem.
+
+This section was NOT about overrides. I will detail those in a later. Overrides are NOT something you should be doing so they will be mentioned is some obscure place BUT because they exist I do need to mention them so that if you run into trouble understanding the output caused by a string that you write you will be aware that order matters.
+
+--Note Ordering--
+
+Since we have wadeded into some ordering interactons with heads and pitches and pointed out how the order is somewhat constrained, I might as well also point out one of the freedoms of expression that is permitted.
+
+In playing with this language I found that rhythm patterns like ((**)(**)) are much easier to read if the pitches are are not interspersed. In particular I found that at times, I'd like to be able to vertically arrange the layout to something like this:
+
+    C, D, E, F,
+  ((*  *)(*  *))
+  
+You read the rhythm on one line and the pitches on the other. The commas became essential because I no longer had * inbetween the pitches to delimit them into the groups that belong together on the same stem. So I think of , as an operator that advances to the next stem. So by using the fact that white space is mostly irrelevant, and that the comma operator allows you to advance stems when you are NOT interspersed you can write the above in 3 different ways.
+
+  C,D,E,F,((**)(**))    ((C*D*)(E*F*))    ((**)(**))C,D,E,F
+  
+I will NOT tolerate abominations where you intermix those styles like C,((D,*E*)(**))F - I dont want to write the code to detect something that ugly. I don't want to require other programmers to deal with the hideous. I expect users to not produce it. If you do produce it all you can be sure of is that different code bases will do different things because it AIN'T RIGHT!.
+
+--Accidentals--
+
+Accidentals are simple. ^ raises a note, v lowers a note.
+
+What we do is however NOT Common Practice. Common practice tells us that if a note has been sharped early in the measure than that sharp applies to all later notes on the same pitch until the end of the measure. We don't do that. We require that you indicate the raise or lower for every single note. The note data tells us what we want for the note. The rendering code will be forced to do the groveling over the local context to see whether or not it need to render an accidental sign (or even what sign it should render) for a given note. 
+
+Thus we have no double sharps, double flats, or natural signs. In a key with flats if you raise a flatted note, the rendering code determines that you needed a natural and not a sharp. You just raise and lower notes (or do nothing to them) and we will determine the proper accidental to render.
+
+We do not follow common practice in our data entry because we assume that keys will be transposed and that lines that appeared in one context during entry my have been moved around and shown in other contexts by the user. Thus we want each note to know unambigously what it is without any contextual inference required.
+
+--Rests--
+
+we prepend ~ to a head to make a rest thus ~* is a quarter rest, ~o is half, ~O is whole.
+
+You can use ~ inside beamed groups as well thus (*~**~*)  will look like (*~**)(~*) 
+
+Rests do not require pitches BUT a pitch (yValue) is allowed to override the default B value thus ~* is a normal quarter rest centered on the staff, but f~* is a quarter rest shoved up to the f line.
+
+The default location of a rest is B, and thus you do not need a pitch attached to a rest, but if you want to overrride you may do so ie. ~ will consume a yValue if their is one.
+
+--Multi-voicing--
+
+You have a beamed set of two eights played at the same time as a quarter note all in the right hand of a piano piece. This is multi-voicing, more than just a single voice. In a single voice, (which is the common thing for many instruments like flute, trumpet, recorder, and human voices) one note follows another.
+
+As far as our Virtual Machine is concerned multi-voice is just a simple issue about time. Every note has a start time (we arbitrarily set the start time for the first note-event in a measure to be time zero.) That first note has a duration based on how many flags and how many dots and how many tuplets influence that note. If we just add the duration of this note to its starttime that takes us to the start time of the next note. So the VM is working like an adding machine, counting durations, adding that to start times to compute new start times and of course, ultimately, it is those start times that are used for all the vertical alignment that happens in a music score.
+
+All you are doing in multi-voice is allowing the VM to remember a previous time and to be able to back up to that time.
+
+  {(**)}*
+  
+The opening brace { said to the VM, "remember this time, we will want to come back to it." Then it compiled the pair of beamed eighth notes. Then the closing brace } said, "Let's go back to that remembered time."
+
+That is really all there is to multi-voicing. You get to remember times and return to them. Any place you see notes or rests and notes stacked up, you will need to first mark that spot with a brace so that you can first do one voice and then return. Braces can be nested if you need that. How much or how little you do or how you think of it doesn't much matter. You could do this:
+
+  {(**)(**)(**)(**)} *~**~*
+  
+Or you could have thought of it like this:
+
+  {(**)(**)}*~*  {(**)(**)}*~*
+  
+The only requirement is that you should finish a beamed group, i.e. close out a nested set of parens before you return to a previous time.
+
+In general we will make the default assumption that the when you have a pattern like {XX}YY that we will assume that you basically wanted stems up on the XX and stems down on the YY i.e. once again we assume that you will write the upper soprano voice first.
+
+--Tuplets--
+
+Triplets are far and away the most common tuplet but once composers discovered that they could put 5 notes together and write a 5 on top WOW they just had to try it on for size.
+
+We use brackets, [] to group notes into triplets so [***] is three quarter notes played as a triplet. We will allow two different ways to enter a triplet of eight notes. [(***)] would be one way and 3(***) would be the other. Basically if you are creating a tuplet out of a beamed group, you just tell us the number that you want us to write over the Beam and there you go.
+
+  11(***********)
+  
+pretty easy. At least visually it is pretty easy. From a sonic stand point (And since we must calculate durations to create vertical alignments from an alignment stand point) there is a bit more work to do.
+
+Triplets have the following effect on duration - they are a multiplier on the base note. Whatever the duration of a quarter note was, if you have three of them in a triplet that should only take two beats - in other words you multiplied each single quarter note by 2/3 - that way 3*(2/3) will be the desired 2 beats. So a triplet was a fractional multiplier to the duration. 
+
+What do you do with 5? Well probably you play them in the time you have normally palyed 4 notes so the multiplier was probably 4/5.
+
+What do you do with 13 or 11? Are you going to pretend that CPN has a single unified notion of what is going on in composer's heads when they write down that stuff - of course not. There is no standard meaning, the meanings are infered NOT by doing some fractional calculation but rather by the alignment with other parts. Unfortunately, our computer here is caclulating durations from flags and dots and tuplets and using that duration to compute alignments, not using pen on paper, aligning some ink vertically and allowing the pianist to infer that those 11 notes were played in the space of 4 triplets because that was what was going on in the other hand thus they took - um 4 groups * 3 notes * TripletMultiplier of 2/3 is 8 so those 11 notes sound like 8 so the multiplier is 8/11.
+
+Yes - tuplets are ugly. Don't worry, must music doesn't have them, other than triplets, and most people can't play them anyway.
+
+But if you need them you get to use a full fraction. Instead of 3(***) you could have written 2/3(***) to get EXACTLY the same result. The tuplet markers (and parens) will consume either one or two numbers (or none in which case it was assumed that you wanted a triplet). 
+
+--Progress So Far--
+
+We have covered the bulk of the language. We have seen the following characters
+
+  'abcdefgABCDEFG(*)oO.^v~0123456789{}[]
